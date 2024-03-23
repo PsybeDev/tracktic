@@ -3,7 +3,7 @@ import { A } from '@solidjs/router';
 
 const Menu: Component = () => {
   return (
-  <ul class="menu bg-base-200 w-56 rounded-box">
+  <ul class="menu bg-base-200 w-56 min-h-screen menu-lg">
       <li><A href="/" end>Home</A></li>
       <li><A href="/settings">Settings</A></li>
   </ul>

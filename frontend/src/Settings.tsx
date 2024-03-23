@@ -10,34 +10,45 @@ const Settings: Component = () => {
   const setWithCurrentValue = (setFunc: Function) => (e: Event) => setFunc((e.currentTarget as HTMLInputElement).value)
 
   return (
-    <div>
-      <header class='container mx-auto'>
+    <div class="container">
+      <header>
+        <h1>Settings</h1>
+      </header>
+      <div>
         <form>
+          <div class="grid grid-cols-1 gap-4">
           <div class="my-2">
-            <label for="address" class="label-text">Address:</label>
-            <input class="input w-full max-w-xs" type="text" name='address' value={address()}
-              onchange={setWithCurrentValue(setAddress)} />
+            <label class="input input-borderd w-full max-w-xs">
+              IP 
+              <input type="text" name='ip' value={address()} onchange={setWithCurrentValue(setAddress)} />
+            </label>
           </div>
-          <div>
-            <label for="name" class="label-text">Name:</label>
-            <input type="text" name='name' class="input w-full max-w-xs" value={name()}
-              onchange={setWithCurrentValue(setName)} />
+          <div class="my-2">
+            <label class="input input-bordered w-full max-w-xs">
+              Port 
+              <input type="text" name='port' value={name()} onchange={setWithCurrentValue(setName)} />
+            </label>
           </div>
-          <div>
-            <label for="password" class="label-text">Password:</label>
-            <input type="text" name='password' class="input w-full max-w-xs" value={password()}
+          <div class="my-2">
+            <label class="input input-bordered w-full max-w-xs">
+              Password 
+            <input type="text" name='password' placeholder="Password" value={password()}
               onchange={setWithCurrentValue(setPassword)} />
+              </label>
           </div>
-          <div>
-            <label for="commandPassword" class="label-text">Command Password:</label>
-            <input type="text" name='commandPassword' class="input w-full max-w-xs" value={commandPassword()}
+          <div class="my-2">
+            <label class="input input-bordered w-full max-w-xs">
+            Command Password 
+            <input type="text" name='commandPassword' laceholder="Command Password" value={commandPassword()}
               onchange={setWithCurrentValue(setCommandPassword)} />
+              </label>
           </div>
-          <div>
+          <div class="my-2">
             <button class='btn btn-primary' type='submit'>Submit</button>
           </div>
+          </div>
         </form>
-      </header>
+      </div>
     </div>
   );
 }
