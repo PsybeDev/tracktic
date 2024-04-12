@@ -23,7 +23,7 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:             "tracktic",
+		Title:             "Tracktic",
 		Width:             1024,
 		Height:            768,
 		MinWidth:          1024,
@@ -68,7 +68,7 @@ func main() {
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  true,
 			About: &mac.AboutInfo{
-				Title:   "tracktic",
+				Title:   "Tracktic",
 				Message: "",
 				Icon:    icon,
 			},
