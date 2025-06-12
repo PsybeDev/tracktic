@@ -1,0 +1,81 @@
+package sims
+
+import (
+	"context"
+	"net/http"
+	"testing"
+	"time"
+
+	"github.com/mpapenbr/goirsdk/irsdk"
+	"github.com/stretchr/testify/mock"
+)
+
+// MockIrsdk is a mock implementation of the irsdk package.
+type MockIrsdk struct {
+	mock.Mock
+}
+
+func (m *MockIrsdk) WaitForValidData() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
+func (m *MockIrsdk) GetData() {
+	m.Called()
+}
+
+func (m *MockIrsdk) GetDoubleValue(key string) (float64, error) {
+	args := m.Called(key)
+	return args.Get(0).(float64), args.Error(1)
+}
+
+// MockHttpClient is a mock implementation of the http.Client.
+type MockHttpClient struct {
+	mock.Mock
+}
+
+func (m *MockHttpClient) Do(req *http.Request) (*http.Response, error) {
+	args := m.Called(req)
+	return args.Get(0).(*http.Response), args.Error(1)
+}
+
+func TestMainLoop(t *testing.T) {
+
+	// Define a variable for dependency injection
+	var NewIrsdk = irsdk.NewIrsdk
+
+	// Replace direct assignment with dependency injection
+	mockIrsdk := &MockIrsdk{}
+	NewIrsdk = func(opts ...irsdk.Option) *irsdk.Irsdk {
+		return &irsdk.Irsdk{} // Return a dummy instance or adapt as needed
+		irsdk.NewIrsdk = func(opts ...irsdk.Option) *irsdk.Irsdk {
+			return &irsdk.Irsdk{} // Return a dummy instance or adapt as needed
+		}
+	}
+
+	// Mock the IsSimRunning function
+	irsdk.IsSimRunning = func(ctx context.Context, client *http.Client) (bool, error) {
+		return true, nil
+	}
+
+	// Set up mock behavior
+	mockIrsdk.On("WaitForValidData").Return(true).Once()
+	mockIrsdk.On("GetData").Return().Once()
+	mockIrsdk.On("GetDoubleValue", "SessionTime").Return(123.45, nil).Once()
+
+	// Run the MainLoop function in a separate goroutine
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("MainLoop panicked: %v", r)
+			}
+		}()
+		MainLoop()
+	}()
+
+	// Allow some time for the loop to execute
+	time.Sleep(1 * time.Second)
+
+	// Assert that the mocked methods were called
+	mockIrsdk.AssertExpectations(t)
+}
