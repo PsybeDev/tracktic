@@ -1,0 +1,38 @@
+package main
+
+import (
+	"fmt"
+	"changeme/strategy"
+)
+
+func main() {
+	fmt.Println("🏁 TrackTic Strategy Engine Test")
+	
+	// Test configuration
+	config := strategy.DefaultConfig()
+	fmt.Printf("✅ Default config loaded: %s model\n", config.Model)
+	
+	// Test sample data creation
+	raceData := strategy.CreateSampleRaceData()
+	fmt.Printf("✅ Sample race data: %s, Lap %d, P%d\n", 
+		raceData.TrackName, raceData.CurrentLap, raceData.Position)
+	
+	// Test data validation
+	if err := strategy.ValidateRaceData(raceData); err != nil {
+		fmt.Printf("❌ Validation failed: %v\n", err)
+	} else {
+		fmt.Printf("✅ Data validation passed\n")
+	}
+	
+	// Test analysis formatting
+	mockAnalysis := &strategy.StrategyAnalysis{
+		CurrentSituation: "Test situation",
+		PrimaryStrategy:  "Test strategy",
+		Confidence:       0.85,
+	}
+	
+	formatted := strategy.FormatAnalysisForDisplay(mockAnalysis)
+	fmt.Printf("✅ Analysis formatting test:\n%s\n", formatted)
+	
+	fmt.Println("🏁 All basic tests passed!")
+}

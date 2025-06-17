@@ -1,0 +1,189 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"changeme/strategy"
+)
+
+func main() {
+	// Check if API key is available
+	if os.Getenv("GOOGLE_API_KEY") == "" && os.Getenv("GEMINI_API_KEY") == "" {
+		fmt.Println("⚠️  No API key found. Set GOOGLE_API_KEY or GEMINI_API_KEY environment variable to use the strategy engine.")
+		fmt.Println("For demonstration purposes, we'll show the data structures and offline functionality.")
+		demonstrateOffline()
+		return
+	}
+
+	fmt.Println("🏁 TrackTic AI Race Strategist Demo")
+	fmt.Println("==================================")
+	
+	// Load configuration
+	config, err := strategy.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+	
+	fmt.Printf("✅ Configuration loaded successfully\n")
+	fmt.Printf("   Model: %s\n", config.Model)
+	fmt.Printf("   Temperature: %.2f\n", config.Temperature)
+	fmt.Printf("   Cache enabled: %t\n", config.EnableCaching)
+	
+	// Create strategy manager
+	manager, err := strategy.NewStrategyManager(config)
+	if err != nil {
+		log.Fatalf("Failed to create strategy manager: %v", err)
+	}
+	defer manager.Close()
+	
+	fmt.Printf("✅ Strategy manager initialized\n")
+	
+	// Check health
+	if err := manager.IsHealthy(); err != nil {
+		log.Printf("⚠️  Health check warning: %v", err)
+	} else {
+		fmt.Printf("✅ Health check passed\n")
+	}
+	
+	// Create sample race scenario
+	raceData := strategy.CreateSampleRaceData()
+	
+	fmt.Printf("\n🏁 RACE SCENARIO\n")
+	fmt.Printf("================\n")
+	fmt.Printf("Track: %s\n", raceData.TrackName)
+	fmt.Printf("Current Position: P%d\n", raceData.Position)
+	fmt.Printf("Current Lap: %d of %d\n", raceData.CurrentLap, raceData.TotalLaps)
+	fmt.Printf("Fuel Level: %.1f%%\n", raceData.FuelLevel)
+	fmt.Printf("Tire Wear: %.1f%% (%s compound)\n", raceData.TireWear, raceData.TireCompound)
+	fmt.Printf("Current Lap Time: %.3fs (Best: %.3fs)\n", raceData.CurrentLapTime, raceData.BestLapTime)
+	fmt.Printf("Weather: %s\n", raceData.Weather)
+	
+	// Demonstrate different analysis types
+	analysisTypes := []struct {
+		name        string
+		description string
+	}{
+		{"routine", "Regular strategic guidance"},
+		{"pit_decision", "Pit stop timing analysis"},
+		{"critical", "Critical situation analysis"},
+	}
+		for _, analysisType := range analysisTypes {
+		fmt.Printf("\n🤖 REQUESTING %s ANALYSIS\n", analysisType.name)
+		fmt.Printf("==================")
+		for i := 0; i < len(analysisType.name); i++ {
+			fmt.Printf("=")
+		}
+		fmt.Printf("\n")
+		fmt.Printf("Description: %s\n", analysisType.description)
+		
+		startTime := time.Now()
+		analysis, err := manager.RequestAnalysis(raceData, analysisType.name)
+		duration := time.Since(startTime)
+		
+		if err != nil {
+			fmt.Printf("❌ Analysis failed: %v\n", err)
+			continue
+		}
+		
+		fmt.Printf("✅ Analysis completed in %v\n\n", duration)
+		
+		// Format and display the analysis
+		formatted := strategy.FormatAnalysisForDisplay(analysis)
+		fmt.Println(formatted)
+		
+		// Small delay between requests to be respectful to the API
+		if analysisType.name != "critical" {
+			fmt.Printf("⏳ Waiting 2 seconds before next analysis...\n")
+			time.Sleep(2 * time.Second)
+		}
+	}
+	
+	// Demonstrate configuration update
+	fmt.Printf("\n🔧 UPDATING CONFIGURATION\n")
+	fmt.Printf("========================\n")
+	
+	newConfig := manager.GetConfig()
+	newConfig.Temperature = 0.5 // Make it more conservative
+	
+	if err := manager.UpdateConfig(newConfig); err != nil {
+		fmt.Printf("❌ Config update failed: %v\n", err)
+	} else {
+		fmt.Printf("✅ Configuration updated (Temperature: %.2f)\n", newConfig.Temperature)
+	}
+	
+	// Show last analysis info
+	lastAnalysis, lastTime := manager.GetLastAnalysis()
+	if lastAnalysis != nil {
+		fmt.Printf("\n📊 LAST ANALYSIS INFO\n")
+		fmt.Printf("====================\n")
+		fmt.Printf("Request ID: %s\n", lastAnalysis.RequestID)
+		fmt.Printf("Analysis Type: %s\n", lastAnalysis.AnalysisType)
+		fmt.Printf("Timestamp: %s\n", lastTime.Format("15:04:05"))
+		fmt.Printf("Confidence: %.1f%%\n", lastAnalysis.Confidence*100)
+	}
+	
+	fmt.Printf("\n🏁 Demo completed successfully!\n")
+}
+
+func demonstrateOffline() {
+	fmt.Println("\n🔄 OFFLINE DEMONSTRATION")
+	fmt.Println("========================")
+	
+	// Show configuration capabilities
+	config := strategy.DefaultConfig()
+	fmt.Printf("Default configuration:\n")
+	fmt.Printf("  Model: %s\n", config.Model)
+	fmt.Printf("  Temperature: %.2f\n", config.Temperature)
+	fmt.Printf("  Max Tokens: %d\n", config.MaxTokens)
+	fmt.Printf("  Cache TTL: %v\n", config.CacheTTL)
+	fmt.Printf("  Request Timeout: %v\n", config.RequestTimeout)
+	
+	// Show sample race data
+	raceData := strategy.CreateSampleRaceData()
+	fmt.Printf("\nSample race data structure:\n")
+	fmt.Printf("  Session: %s\n", raceData.SessionType)
+	fmt.Printf("  Track: %s\n", raceData.TrackName)
+	fmt.Printf("  Position: P%d\n", raceData.Position)
+	fmt.Printf("  Lap: %d/%d\n", raceData.CurrentLap, raceData.TotalLaps)
+	fmt.Printf("  Fuel: %.1f%% (%.2f L/lap consumption)\n", raceData.FuelLevel, raceData.FuelConsumption)
+	fmt.Printf("  Tires: %s compound, %.1f%% wear\n", raceData.TireCompound, raceData.TireWear)
+	fmt.Printf("  Times: Current %.3fs, Best %.3fs\n", raceData.CurrentLapTime, raceData.BestLapTime)
+	fmt.Printf("  Opponents: %d cars tracked\n", len(raceData.Opponents))
+	
+	// Validate the sample data
+	if err := strategy.ValidateRaceData(raceData); err != nil {
+		fmt.Printf("❌ Data validation failed: %v\n", err)
+	} else {
+		fmt.Printf("✅ Race data validation passed\n")
+	}
+	
+	// Show mock analysis output
+	mockAnalysis := &strategy.StrategyAnalysis{
+		CurrentSituation:        "Mid-race in P4, good pace but fuel concerns",
+		PrimaryStrategy:         "Extend current stint to lap 18, then pit for medium tires",
+		Confidence:              0.82,
+		PitWindowOpen:           false,
+		RecommendedLap:          18,
+		TireRecommendation:      "medium",
+		FuelStrategy:            "Reduce fuel consumption by 0.2L/lap for next 4 laps",
+		ImmediateActions:        []string{"Lift and coast in turn 8", "Monitor front tire temps", "Prepare for undercut defense"},
+		LapTargets:              map[string]float64{"current_stint": 84.2, "after_pit": 83.1},
+		RiskFactors:             []string{"Front tire degradation accelerating", "Car behind gaining 0.1s/lap"},
+		Opportunities:           []string{"Leader struggling with tire wear", "Pit window opens in 3 laps"},
+		EstimatedFinishPosition: 3,
+		EstimatedFinishTime:     "1:24:15",
+		Timestamp:               time.Now(),
+		RequestID:               "demo-12345",
+		AnalysisType:            "routine",
+	}
+	
+	fmt.Printf("\nMock strategy analysis output:\n")
+	formatted := strategy.FormatAnalysisForDisplay(mockAnalysis)
+	fmt.Println(formatted)
+	
+	fmt.Printf("\n✅ Offline demonstration completed!\n")
+	fmt.Printf("   Set GOOGLE_API_KEY environment variable to enable live AI analysis.\n")
+}
