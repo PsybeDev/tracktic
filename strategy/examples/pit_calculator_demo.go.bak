@@ -1,0 +1,380 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	"changeme/sims"
+	"changeme/strategy"
+)
+
+func main() {
+	fmt.Println("🏁 Pit Stop Calculator Demonstration")
+	fmt.Println("======================================")
+
+	// Initialize pit stop calculator
+	config := &strategy.Config{}
+	calculator := strategy.NewPitStopCalculator(config)
+
+	// Create sample telemetry data representing a race situation
+	data := createSampleTelemetryData()
+	raceAnalysis := createSampleRaceAnalysis()
+
+	fmt.Printf("\n📊 Current Race Situation:\n")
+	fmt.Printf("   Track: %s\n", data.Session.TrackName)
+	fmt.Printf("   Lap: %d/%d\n", data.Player.CurrentLap, data.Session.TotalLaps)
+	fmt.Printf("   Position: P%d\n", data.Player.Position)
+	fmt.Printf("   Lap Distance: %.1f%%\n", data.Player.LapDistancePercent)
+	fmt.Printf("   Tire Wear: %.1f%% average\n", strategy.CalculateAverageWear(data.Player.Tires))
+	fmt.Printf("   Fuel: %.1f L (%d laps remaining)\n", data.Player.Fuel.Level, data.Player.Fuel.EstimatedLapsLeft)
+	fmt.Printf("   Gap to ahead: %v\n", data.Player.GapToAhead)
+	fmt.Printf("   Gap to behind: %v\n", data.Player.GapToBehind)
+
+	// Perform pit stop timing analysis
+	fmt.Printf("\n⚡ Calculating pit stop strategy...\n")
+	analysis := calculator.CalculatePitStopTiming(data, raceAnalysis)
+
+	// Display results
+	displayAnalysisResults(analysis)
+
+	// Test with different scenarios
+	fmt.Printf("\n🔄 Testing different race scenarios...\n")
+	testHighTireWearScenario(calculator)
+	testLowFuelScenario(calculator)
+	testUnderCutThreatScenario(calculator)
+}
+
+func createSampleTelemetryData() *sims.TelemetryData {
+	return &sims.TelemetryData{
+		Timestamp:     time.Now(),
+		SimulatorType: sims.SimulatorTypeACC,
+		IsConnected:   true,
+		Session: sims.SessionInfo{
+			Type:             sims.SessionTypeRace,
+			Format:           sims.RaceFormatEndurance,
+			Flag:             sims.SessionFlagGreen,
+			TimeRemaining:    time.Hour*2 + time.Minute*15,
+			TotalLaps:        72,
+			TrackName:        "Spa-Francorchamps",
+			TrackLength:      7.004,
+			AirTemperature:   22.0,
+			TrackTemperature: 35.0,
+		},
+		Player: sims.PlayerData{
+			Position:           6,
+			CurrentLap:         28,
+			LapDistancePercent: 65.0,
+			LastLapTime:        time.Minute*2 + time.Second*17,
+			BestLapTime:        time.Minute*2 + time.Second*15,
+			CurrentLapTime:     time.Minute*2 + time.Second*18,
+			GapToLeader:        time.Minute*2 + time.Second*45,
+			GapToAhead:         time.Second * 12,
+			GapToBehind:        time.Second * 8,
+			Speed:              185.0,
+			RPM:                7200,
+			Gear:               5,
+			Throttle:           85.0,
+			Brake:              0.0,
+			Tires: sims.TireData{
+				Compound:   "medium",
+				FrontLeft:  sims.TireWheelData{WearPercent: 58.0, Temperature: 95.0, Pressure: 27.5},
+				FrontRight: sims.TireWheelData{WearPercent: 55.0, Temperature: 97.0, Pressure: 27.8},
+				RearLeft:   sims.TireWheelData{WearPercent: 62.0, Temperature: 105.0, Pressure: 26.2},
+				RearRight:  sims.TireWheelData{WearPercent: 60.0, Temperature: 103.0, Pressure: 26.5},
+				WearLevel:  sims.TireWearMedium,
+				TempLevel:  sims.TireTempOptimal,
+			},
+			Fuel: sims.FuelData{
+				Level:             48.5,
+				Capacity:          80.0,
+				Percentage:        60.6,
+				UsagePerLap:       2.8,
+				EstimatedLapsLeft: 17,
+				LowFuelWarning:    false,
+			},
+			Pit: sims.PitData{
+				IsOnPitRoad:   false,
+				LastPitLap:    0,
+				LastPitTime:   0,
+				PitSpeedLimit: 60.0,
+			},
+		},
+		Opponents: []sims.OpponentData{
+			{
+				CarIndex:     5,
+				DriverName:   "Lewis Hamilton",
+				Position:     5,
+				CurrentLap:   28,
+				LastLapTime:  time.Minute*2 + time.Second*16,
+				GapToPlayer:  -time.Second * 12,
+				IsOnPitRoad:  false,
+				LastPitLap:   8,
+			},
+			{
+				CarIndex:     7,
+				DriverName:   "Max Verstappen",
+				Position:     7,
+				CurrentLap:   28,
+				LastLapTime:  time.Minute*2 + time.Second*18,
+				GapToPlayer:  time.Second * 8,
+				IsOnPitRoad:  false,
+				LastPitLap:   12,
+			},
+		},
+	}
+}
+
+func createSampleRaceAnalysis() *strategy.RaceAnalysis {
+	return &strategy.RaceAnalysis{
+		RaceFormat:               "endurance",
+		StrategicPhase:           "middle",
+		PositionTrend:            "stable",
+		SafetyCarProbability:     0.25,
+		WeatherChangeProbability: 0.15,
+		RiskLevel:                "medium",
+		OpportunityScore:         0.6,
+		KeyStrategicFactors:      []string{"tire_degradation", "fuel_management", "track_position"},
+	}
+}
+
+func displayAnalysisResults(analysis *strategy.PitStopAnalysis) {
+	fmt.Printf("\n📈 Pit Stop Analysis Results:\n")
+	fmt.Printf("   Calculation Confidence: %.1f%%\n", analysis.CalculationConfidence*100)
+	fmt.Printf("   Data Quality: %.1f%%\n", analysis.DataQuality*100)
+
+	// Current position info
+	fmt.Printf("\n📍 Current Track Position:\n")
+	fmt.Printf("   Lap Distance: %.1f%%\n", analysis.CurrentPosition.LapDistance)
+	fmt.Printf("   Current Speed: %.1f km/h\n", analysis.CurrentPosition.EstimatedSpeed)
+	fmt.Printf("   Distance to Finish: %.2f km\n", analysis.CurrentPosition.DistanceToFinish)
+	if analysis.CurrentPosition.TimeToFinish > 0 {
+		fmt.Printf("   Estimated Time to Finish: %v\n", analysis.CurrentPosition.TimeToFinish)
+	}
+
+	// Optimal pit windows
+	fmt.Printf("\n⏰ Optimal Pit Windows:\n")
+	if len(analysis.OptimalWindows) == 0 {
+		fmt.Printf("   No immediate pit windows identified\n")
+	} else {
+		for i, window := range analysis.OptimalWindows {
+			fmt.Printf("   %d. %s Window (Laps %d-%d)\n", i+1, window.WindowType, window.StartLap, window.EndLap)
+			fmt.Printf("      Optimal Lap: %d\n", window.OptimalLap)
+			fmt.Printf("      Expected Gain/Loss: %v\n", window.ExpectedGain)
+			fmt.Printf("      Risk Level: %s\n", window.RiskLevel)
+			fmt.Printf("      Confidence: %.1f%%\n", window.Confidence*100)
+			fmt.Printf("      Rationale: %s\n", window.Rationale)
+		}
+	}
+
+	// Future position predictions
+	fmt.Printf("\n🔮 Position Predictions (Next 5 Laps):\n")
+	for _, pos := range analysis.EstimatedPositions {
+		fmt.Printf("   Lap %d: P%d (Confidence: %.1f%%)\n",
+			pos.Lap, pos.Position, pos.Confidence*100)
+		if len(pos.InfluencingFactors) > 0 {
+			fmt.Printf("      Factors: %v\n", pos.InfluencingFactors)
+		}
+	}
+
+	// Pit loss calculation
+	fmt.Printf("\n💰 Pit Stop Cost Analysis:\n")
+	fmt.Printf("   Total Pit Time: %v\n", analysis.PitLossCalculation.TotalPitTime)
+	fmt.Printf("   Net Time Loss: %v\n", analysis.PitLossCalculation.NetTimeLoss)
+	fmt.Printf("   Expected Positions Lost: %d\n", analysis.PitLossCalculation.PositionsLost)
+	fmt.Printf("   Recovery Time: %d laps\n", analysis.PitLossCalculation.RecoveryLaps)
+
+	// Undercut analysis
+	fmt.Printf("\n🏃 UnderCut Analysis:\n")
+	fmt.Printf("   Threat Level: %s\n", analysis.UnderCutAnalysis.ThreatLevel)
+	if len(analysis.UnderCutAnalysis.ThreateningCars) > 0 {
+		fmt.Printf("   Threatening Cars:\n")
+		for _, threat := range analysis.UnderCutAnalysis.ThreateningCars {
+			fmt.Printf("      P%d %s: %.1f%% threat (Gap: %v)\n",
+				threat.CarPosition, threat.DriverName,
+				threat.ThreatProbability*100, threat.GapBehind)
+		}
+	}
+	fmt.Printf("   Optimal Response: %s\n", analysis.UnderCutAnalysis.OptimalResponse)
+
+	// OverCut analysis
+	fmt.Printf("\n🏃‍♂️ OverCut Analysis:\n")
+	fmt.Printf("   Opportunity Level: %s\n", analysis.OverCutAnalysis.OpportunityLevel)
+	if len(analysis.OverCutAnalysis.TargetCars) > 0 {
+		fmt.Printf("   Target Cars:\n")
+		for _, target := range analysis.OverCutAnalysis.TargetCars {
+			fmt.Printf("      P%d %s: %.1f%% success chance (Gap: %v)\n",
+				target.CarPosition, target.DriverName,
+				target.SuccessProbability*100, target.GapAhead)
+		}
+		fmt.Printf("   Required Stint Extension: %d laps\n", analysis.OverCutAnalysis.RequiredStint)
+	}
+
+	// Risk factors
+	fmt.Printf("\n⚠️  Risk Factors:\n")
+	if len(analysis.RiskFactors) == 0 {
+		fmt.Printf("   No significant risks identified\n")
+	} else {
+		for _, risk := range analysis.RiskFactors {
+			fmt.Printf("   %s (%s severity)\n", risk.RiskType, risk.Severity)
+			fmt.Printf("      Impact: %s\n", risk.Impact)
+			fmt.Printf("      Mitigation: %s\n", risk.Mitigation)
+		}
+	}
+
+	// Primary recommendation
+	fmt.Printf("\n🎯 Primary Recommendation:\n")
+	rec := analysis.PrimaryRecommendation
+	if rec.ShouldPit {
+		fmt.Printf("   Action: PIT STOP RECOMMENDED\n")
+		fmt.Printf("   Optimal Lap: %d\n", rec.OptimalLap)
+		fmt.Printf("   Window Closes: Lap %d\n", rec.WindowCloseLap)
+	} else {
+		fmt.Printf("   Action: STAY OUT\n")
+	}
+	fmt.Printf("   Tire Compound: %s\n", rec.TireCompound)
+	if rec.FuelLoad > 0 {
+		fmt.Printf("   Fuel Load: %.1f L\n", rec.FuelLoad)
+	}
+	fmt.Printf("   Expected Time Impact: %v\n", rec.EstimatedLoss)
+
+	// Alternative options
+	fmt.Printf("\n🔄 Alternative Strategies:\n")
+	for i, alt := range analysis.AlternativeOptions {
+		fmt.Printf("   %d. Pit on Lap %d (%s)\n", i+1, alt.Lap, alt.RiskLevel)
+		fmt.Printf("      Tires: %s, Fuel: %.1fL\n", alt.TireCompound, alt.FuelLoad)
+		fmt.Printf("      Pros: %v\n", alt.Pros)
+		fmt.Printf("      Cons: %v\n", alt.Cons)
+	}
+}
+
+func testHighTireWearScenario(calculator *strategy.PitStopCalculator) {
+	fmt.Printf("\n🔍 Scenario 1: High Tire Wear\n")
+
+	data := &sims.TelemetryData{
+		Session: sims.SessionInfo{
+			TrackName: "Silverstone",
+			TotalLaps: 52,
+		},
+		Player: sims.PlayerData{
+			CurrentLap: 35,
+			Position:   4,
+			Tires: sims.TireData{
+				FrontLeft:  sims.TireWheelData{WearPercent: 85.0},
+				FrontRight: sims.TireWheelData{WearPercent: 82.0},
+				RearLeft:   sims.TireWheelData{WearPercent: 88.0},
+				RearRight:  sims.TireWheelData{WearPercent: 86.0},
+			},
+			Fuel: sims.FuelData{EstimatedLapsLeft: 20},
+		},
+	}
+
+	raceAnalysis := &strategy.RaceAnalysis{
+		RaceFormat:     "sprint",
+		StrategicPhase: "late",
+	}
+
+	analysis := calculator.CalculatePitStopTiming(data, raceAnalysis)
+
+	fmt.Printf("   Average Tire Wear: %.1f%%\n", strategy.CalculateAverageWear(data.Player.Tires))
+	fmt.Printf("   Risk Factors: %d identified\n", len(analysis.RiskFactors))
+	fmt.Printf("   Optimal Windows: %d found\n", len(analysis.OptimalWindows))
+	if analysis.PrimaryRecommendation.ShouldPit {
+		fmt.Printf("   ✅ Pit stop recommended\n")
+	} else {
+		fmt.Printf("   ❌ No pit stop recommended\n")
+	}
+}
+
+func testLowFuelScenario(calculator *strategy.PitStopCalculator) {
+	fmt.Printf("\n🔍 Scenario 2: Low Fuel\n")
+
+	data := &sims.TelemetryData{
+		Session: sims.SessionInfo{
+			TrackName: "Monza",
+			TotalLaps: 53,
+		},
+		Player: sims.PlayerData{
+			CurrentLap: 45,
+			Position:   3,
+			Tires: sims.TireData{
+				FrontLeft:  sims.TireWheelData{WearPercent: 35.0},
+				FrontRight: sims.TireWheelData{WearPercent: 32.0},
+				RearLeft:   sims.TireWheelData{WearPercent: 38.0},
+				RearRight:  sims.TireWheelData{WearPercent: 36.0},
+			},
+			Fuel: sims.FuelData{EstimatedLapsLeft: 3}, // Critical fuel!
+		},
+	}
+
+	raceAnalysis := &strategy.RaceAnalysis{
+		RaceFormat:     "sprint",
+		StrategicPhase: "critical",
+	}
+
+	analysis := calculator.CalculatePitStopTiming(data, raceAnalysis)
+
+	fmt.Printf("   Fuel Remaining: %d laps\n", data.Player.Fuel.EstimatedLapsLeft)
+	fmt.Printf("   Risk Factors: %d identified\n", len(analysis.RiskFactors))
+
+	// Check for fuel shortage risk
+	hasFuelRisk := false
+	for _, risk := range analysis.RiskFactors {
+		if risk.RiskType == "fuel_shortage" {
+			hasFuelRisk = true
+			fmt.Printf("   ⛽ Fuel shortage risk: %s severity\n", risk.Severity)
+			break
+		}
+	}
+
+	if !hasFuelRisk {
+		fmt.Printf("   ⛽ No fuel shortage risk detected\n")
+	}
+
+	if analysis.PrimaryRecommendation.ShouldPit {
+		fmt.Printf("   ✅ Emergency pit stop recommended\n")
+	}
+}
+
+func testUnderCutThreatScenario(calculator *strategy.PitStopCalculator) {
+	fmt.Printf("\n🔍 Scenario 3: UnderCut Threat\n")
+
+	data := &sims.TelemetryData{
+		Session: sims.SessionInfo{
+			TrackName: "Spa-Francorchamps",
+			TotalLaps: 44,
+		},
+		Player: sims.PlayerData{
+			CurrentLap: 22,
+			Position:   5,
+			Tires: sims.TireData{
+				FrontLeft:  sims.TireWheelData{WearPercent: 45.0},
+				FrontRight: sims.TireWheelData{WearPercent: 42.0},
+				RearLeft:   sims.TireWheelData{WearPercent: 48.0},
+				RearRight:  sims.TireWheelData{WearPercent: 46.0},
+			},
+			Fuel: sims.FuelData{EstimatedLapsLeft: 25},
+		},
+		Opponents: []sims.OpponentData{
+			{
+				CarIndex:     6,
+				DriverName:   "Charles Leclerc",
+				Position:     6,
+				GapToPlayer:  -time.Second * 18, // Close behind
+				LastPitLap:   15, // Could pit soon
+			},
+		},
+	}
+
+	raceAnalysis := &strategy.RaceAnalysis{
+		RaceFormat:     "endurance",
+		StrategicPhase: "middle",
+	}
+
+	analysis := calculator.CalculatePitStopTiming(data, raceAnalysis)
+
+	fmt.Printf("   UnderCut Threat Level: %s\n", analysis.UnderCutAnalysis.ThreatLevel)
+	fmt.Printf("   Threatening Cars: %d\n", len(analysis.UnderCutAnalysis.ThreateningCars))
+	fmt.Printf("   Defense Options: %d\n", len(analysis.UnderCutAnalysis.DefenseOptions))
+	fmt.Printf("   Optimal Response: %s\n", analysis.UnderCutAnalysis.OptimalResponse)
+}

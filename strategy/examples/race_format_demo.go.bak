@@ -1,0 +1,252 @@
+package main
+
+import (
+	"fmt"
+	"strings"
+	"time"
+	"changeme/strategy"
+)
+
+func main() {
+	fmt.Println("🏁 TrackTic Strategy Engine - Race Format Demo")
+	fmt.Println("==============================================")
+	
+	// Test configuration
+	config := strategy.DefaultConfig()
+	config.APIKey = "demo-key" // Dummy key for demo
+	fmt.Printf("✅ Configuration loaded\n\n")
+	
+	// Create prompt builder
+	builder := strategy.NewPromptBuilder(config)
+	fmt.Printf("✅ Prompt builder initialized\n\n")
+	
+	// Test different race scenarios
+	scenarios := []struct {
+		name        string
+		description string
+		raceData    *strategy.RaceData
+	}{
+		{
+			name:        "Sprint Race",
+			description: "Short 15-lap sprint with aggressive strategy needs",
+			raceData: &strategy.RaceData{
+				SessionType:      "race",
+				TrackName:        "Monza",
+				TotalLaps:        15,
+				CurrentLap:       8,
+				Position:         4,
+				FuelLevel:        65.0,
+				FuelConsumption:  2.5,
+				TireWear:         55.0,
+				TireCompound:     "soft",				CurrentLapTime:   78.456,
+				BestLapTime:      77.890,
+				AverageLapTime:   78.234,
+				TrackTemp:        35.0,
+				AirTemp:          28.0,
+				Weather:          "dry",
+				WeatherForecast:  "dry",
+				RemainingLaps:    7,
+				SafetyCarActive:  false,
+				Opponents: []strategy.OpponentData{
+					{Position: 3, Name: "Hamilton", GapToPlayer: 1.234, LastLapTime: 78.123},
+					{Position: 5, Name: "Verstappen", GapToPlayer: -0.876, LastLapTime: 78.567},
+				},
+			},
+		},
+		{
+			name:        "Endurance Race",
+			description: "Long 6-hour endurance race requiring strategic patience",
+			raceData: &strategy.RaceData{
+				SessionType:      "race",
+				TrackName:        "Le Mans",
+				TotalLaps:        0, // Time-based
+				SessionTime:      6 * 3600, // 6 hours
+				SessionTimeLeft:  3.5 * 3600, // 3.5 hours left
+				CurrentLap:       85,
+				Position:         2,
+				FuelLevel:        45.0,
+				FuelConsumption:  3.2,
+				TireWear:         70.0,
+				TireCompound:     "medium",
+				CurrentLapTime:   210.456,
+				BestLapTime:      208.234,
+				AverageLapTime:   210.123,
+				TrackTemp:        30.0,
+				AirTemp:          24.0,
+				Weather:          "dry",
+				WeatherForecast:  "light_rain",
+				RemainingLaps:    120, // Estimated
+				SafetyCarActive:  false,
+				Opponents: []strategy.OpponentData{
+					{Position: 1, Name: "Toyota #1", GapToPlayer: 15.234, LastLapTime: 209.876},
+					{Position: 3, Name: "Porsche #2", GapToPlayer: -8.456, LastLapTime: 210.345},
+				},
+			},
+		},
+		{
+			name:        "Standard Feature Race",
+			description: "Standard 25-lap feature race with balanced strategy",
+			raceData: &strategy.RaceData{
+				SessionType:      "race",
+				TrackName:        "Silverstone",
+				TotalLaps:        25,
+				CurrentLap:       15,
+				Position:         3,
+				FuelLevel:        40.0,
+				FuelConsumption:  2.8,
+				TireWear:         65.0,
+				TireCompound:     "medium",
+				CurrentLapTime:   85.678,
+				BestLapTime:      84.234,
+				AverageLapTime:   85.456,
+				TrackTemp:        32.0,
+				AirTemp:          25.0,
+				Weather:          "dry",
+				WeatherForecast:  "dry",
+				RemainingLaps:    10,
+				SafetyCarActive:  false,
+				YellowFlagSector: 0,
+				Opponents: []strategy.OpponentData{
+					{Position: 2, Name: "Leclerc", GapToPlayer: 3.456, LastLapTime: 84.890},
+					{Position: 4, Name: "Russell", GapToPlayer: -2.123, LastLapTime: 85.234},
+				},
+			},
+		},
+	}
+	
+	// Demonstrate race format detection and specialized prompts
+	for i, scenario := range scenarios {
+		fmt.Printf("=== SCENARIO %d: %s ===\n", i+1, scenario.name)
+		fmt.Printf("Description: %s\n", scenario.description)
+		
+		// Test race format detection
+		detector := strategy.NewRaceFormatDetector(config)
+		detectedFormat := detector.DetectRaceFormat(scenario.raceData)
+		fmt.Printf("🎯 Detected Race Format: %s\n", detectedFormat)
+		
+		// Show race format analysis
+		analysis := builder.GetRaceFormatAnalysis(detectedFormat)
+		fmt.Printf("\n📋 Race Format Analysis:\n%s\n", analysis)
+		
+		// Generate specialized prompt sample (first 500 characters)
+		config.AnalysisPreferences.IncludeOpponentData = true
+		prompt, err := builder.BuildSpecializedPrompt(scenario.raceData, "routine", config)
+		if err != nil {
+			fmt.Printf("❌ Error generating prompt: %v\n", err)
+		} else {
+			fmt.Printf("📝 Specialized Prompt Sample (first 500 chars):\n")
+			if len(prompt) > 500 {
+				fmt.Printf("%s...\n", prompt[:500])
+			} else {
+				fmt.Printf("%s\n", prompt)
+			}
+		}
+		
+		// Show mock analysis result with format-specific content
+		mockAnalysis := createMockAnalysisForFormat(detectedFormat, scenario.raceData)
+		formatted := strategy.FormatAnalysisForDisplay(mockAnalysis)
+		fmt.Printf("\n🤖 Mock AI Analysis Result:\n%s\n", formatted)
+		
+		fmt.Printf("=" + strings.Repeat("=", 50) + "\n\n")
+	}
+	
+	// Demonstrate prompt template comparison
+	fmt.Printf("🔍 PROMPT TEMPLATE COMPARISON\n")
+	fmt.Printf("=============================\n")
+	
+	formats := []string{"sprint", "endurance", "standard"}
+	for _, format := range formats {
+		template := strategy.GetPromptTemplate(format)
+		fmt.Printf("\n--- %s RACE TEMPLATE ---\n", strings.ToUpper(format))
+		fmt.Printf("System Context: %s\n", truncateString(template.SystemContext, 150))
+		fmt.Printf("Key Factors (%d): %s\n", len(template.KeyFactors), 
+			strings.Join(template.KeyFactors[:min(3, len(template.KeyFactors))], "; "))
+		fmt.Printf("Decision Criteria (%d): %s\n", len(template.DecisionCriteria),
+			strings.Join(template.DecisionCriteria[:min(2, len(template.DecisionCriteria))], "; "))
+	}
+	
+	fmt.Printf("\n✅ Race format demonstration completed!\n")
+	fmt.Printf("💡 The strategy engine now adapts prompts based on:\n")
+	fmt.Printf("   • Race length (lap count or time duration)\n")
+	fmt.Printf("   • Strategic priorities (aggressive vs consistency)\n")
+	fmt.Printf("   • Format-specific decision criteria\n")
+	fmt.Printf("   • Specialized output guidance\n")
+}
+
+// createMockAnalysisForFormat creates a realistic mock analysis for each race format
+func createMockAnalysisForFormat(format string, raceData *strategy.RaceData) *strategy.StrategyAnalysis {
+	analysis := &strategy.StrategyAnalysis{
+		RaceFormat:  format,
+		Confidence:  0.85,
+		Timestamp:   time.Now(),
+		RequestID:   "demo-" + format,
+		AnalysisType: "routine",
+	}
+	
+	switch format {
+	case "sprint":
+		analysis.CurrentSituation = fmt.Sprintf("Sprint race P%d at %s - aggressive positioning phase", raceData.Position, raceData.TrackName)
+		analysis.PrimaryStrategy = "Maintain track position, push for overtakes in DRS zones"
+		analysis.PitWindowOpen = false
+		analysis.TireRecommendation = "Stay on current softs"
+		analysis.FuelStrategy = "Fuel sufficient - no conservation needed"
+		analysis.ImmediateActions = []string{"Attack in sector 2", "Defend into Turn 1", "Prepare for DRS battle"}
+		analysis.LapTargets = map[string]float64{"qualifying_pace": raceData.BestLapTime - 0.2, "race_pace": raceData.BestLapTime + 0.1}
+		analysis.RiskFactors = []string{"Close battles increase incident risk", "Tire degradation accelerating"}
+		analysis.Opportunities = []string{"Car ahead struggling with tire temps", "DRS opportunity next lap"}
+		analysis.StrategicTimeline = "Next 3 laps: Attack phase, Laps 4-7: Consolidate position"
+		analysis.EstimatedFinishPosition = max(1, raceData.Position - 1)
+		
+	case "endurance":
+		analysis.CurrentSituation = fmt.Sprintf("Endurance race P%d at %s - consistency phase, multiple stints ahead", raceData.Position, raceData.TrackName)
+		analysis.PrimaryStrategy = "Extend current stint to lap 105, then medium tires for 35-lap stint"
+		analysis.PitWindowOpen = false
+		analysis.RecommendedLap = 105
+		analysis.TireRecommendation = "medium"
+		analysis.FuelStrategy = "Reduce consumption by 0.1L/lap, target 32-lap stint length"
+		analysis.ImmediateActions = []string{"Lift and coast T6-T8", "Monitor tire temps", "Consistent 210.2s pace"}
+		analysis.LapTargets = map[string]float64{"current_stint": 210.5, "fuel_saving": 211.0, "optimal_pace": 210.2}
+		analysis.RiskFactors = []string{"Weather change in 90 minutes", "Tire degradation after lap 110"}
+		analysis.Opportunities = []string{"Leader pitting early", "Weather advantage with compound choice"}
+		analysis.StrategicTimeline = "Next 20 laps: Fuel save mode, Lap 105: Pit stop, Final 35 laps: Attack phase"
+		analysis.EstimatedFinishPosition = raceData.Position
+		
+	case "standard":
+		analysis.CurrentSituation = fmt.Sprintf("Standard race P%d at %s - strategic decision window approaching", raceData.Position, raceData.TrackName)
+		analysis.PrimaryStrategy = "Pit in 2-3 laps for fresh mediums, undercut cars ahead"
+		analysis.PitWindowOpen = true
+		analysis.RecommendedLap = raceData.CurrentLap + 2
+		analysis.TireRecommendation = "medium"
+		analysis.FuelStrategy = "Current fuel adequate for remaining distance"
+		analysis.ImmediateActions = []string{"Push for 2 laps", "Prepare undercut", "Monitor competitor pit timing"}
+		analysis.LapTargets = map[string]float64{"push_phase": raceData.BestLapTime + 0.3, "post_pit": raceData.BestLapTime - 0.1}
+		analysis.RiskFactors = []string{"Traffic after pit stop", "Competitor counter-strategy"}
+		analysis.Opportunities = []string{"Undercut window open", "Fresh tire advantage for 8 laps"}
+		analysis.StrategicTimeline = "Lap 17: Pit stop, Laps 18-25: Fresh tire advantage phase"
+		analysis.EstimatedFinishPosition = max(1, raceData.Position - 1)
+	}
+	
+	return analysis
+}
+
+// Helper functions
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
